@@ -1,161 +1,408 @@
 package com.example.videotest;
+import java.io.DataOutputStream;
+
+import java.io.File;
+
+import java.io.FileInputStream;
+
+import java.net.HttpURLConnection;
+
+import java.net.MalformedURLException;
+
+import java.net.URL;
+
+import android.app.ProgressDialog;
+
+import android.os.Bundle;
+
+import android.util.Log;
+
+import android.view.View;
+
+import android.view.View.OnClickListener;
+
+import android.widget.Button;
+
+import android.widget.TextView;
+
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.app.DownloadManager;
-import android.content.ContentResolver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.res.AssetFileDescriptor;
-import android.net.Uri;
-import android.os.AsyncTask;
-import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
-import android.widget.Button;
-import android.widget.ImageView;
-
-import org.webrtc.MediaStreamTrack;
-
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.MediaType;
-import okhttp3.MultipartBody;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-import okio.BufferedSink;
-import okio.Okio;
 
 public class uploadVideo extends AppCompatActivity {
 
-    Uri video_URI;
-    int VIDEOFILE_REQUEST = 1;
+
+    TextView messageText;
+
+    Button uploadButton;
+
+    int serverResponseCode = 0;
+
+    ProgressDialog dialog = null;
+
+
+
+    String upLoadServerUri = null;
+
+
+
+    /**********  File Path *************/
+
+    final String uploadFilePath = "/storage/emulated/0/DCIM/Camera/";//경로를 모르겠으면, 갤러리 어플리케이션 가서 메뉴->상세 정보
+
+    final String uploadFileName = "VID_20191126_042355.mp4"; //전송하고자하는 파일 이름
+
+
 
     @Override
+
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_upload_video);
-    }
 
-    // 동영상 앨범 열기
-    public void getVideoFromGallery(View v) {
-        //갤러리에 저장된 동영상 호출
-        video_URI = Uri.parse("content://media/external/images/media");
-        Intent intent = new Intent(Intent.ACTION_VIEW, video_URI);
-        intent.setAction(Intent.ACTION_GET_CONTENT);
-        intent.setType("video/*");
-        startActivityForResult(intent,VIDEOFILE_REQUEST);
-        System.out.println(video_URI);
-    }
+        uploadButton = (Button)findViewById(R.id.button2);
 
-    // 서버에 전송
-    public void sendVideoContentToServer(View v) {
-        System.out.println("들어옴0");
-        class sendDataToHttp extends AsyncTask<Void, Void, String> {
-            String serverUrl = "http://1.234.38.211/uploadVideo.php";
-            OkHttpClient client = new OkHttpClient();
-            Context context;
+        messageText  = (TextView)findViewById(R.id.textView);
 
-            public sendDataToHttp(Context context) {
-                this.context = context;
-            }
+
+
+        messageText.setText("Uploading file path :- '/mnt/sdcard/"+uploadFileName+"'");
+
+
+
+        /************* Php script path ****************/
+
+        upLoadServerUri = "http://1.234.38.211/uploadVideo.php";//서버컴퓨터의 ip주소
+
+
+
+        uploadButton.setOnClickListener(new OnClickListener() {
 
             @Override
-            protected void onPreExecute() {
-                super.onPreExecute();
-            }
 
-            @Override
-            protected String doInBackground(Void... voids) {
-                System.out.println("들어옴1");
-                ContentResolver contentResolver = context.getContentResolver();
-                final String contentType = contentResolver.getType(video_URI);
-                final AssetFileDescriptor fd;
-                try {
-                    fd = contentResolver.openAssetFileDescriptor(video_URI, "r");
+            public void onClick(View v) {
 
-                    if (fd == null) {
-                        throw new FileNotFoundException("could not open file descriptor");
+
+
+                dialog = ProgressDialog.show(uploadVideo.this, "", "Uploading file...", true);
+
+
+
+                new Thread(new Runnable() {
+
+                    public void run() {
+
+                        runOnUiThread(new Runnable() {
+
+                            public void run() {
+
+                                messageText.setText("uploading started.....");
+
+                            }
+
+                        });
+
+
+
+                        uploadFile(uploadFilePath + "" + uploadFileName);
+
+
+
                     }
 
+                }).start();
 
-                    RequestBody videoFile = new RequestBody() {
-                        @Override
-                        public long contentLength() {
-                            return fd.getDeclaredLength();
-                        }
+            }
 
-                        @Override
-                        public MediaType contentType() {
-                            return MediaType.parse(contentType);
-                        }
+        });
 
-                        @Override
-                        public void writeTo(BufferedSink sink) throws IOException {
-                            try (InputStream is = fd.createInputStream()) {
-                                sink.writeAll(Okio.buffer(Okio.source(is)));
-                            }
-                        }
-                    };
+    }
 
-                    RequestBody requestBody = new MultipartBody.Builder()
-                            .setType(MultipartBody.FORM)
-                            .addFormDataPart("questionId","1") //문제 id 들어가면 됨
-                            .addFormDataPart("file", "fname",videoFile)
-                            .build();
 
-                    Request request = new Request.Builder()
-                            .url(serverUrl)
-                            .post(requestBody)
-                            .build();
 
-                    client.newCall(request).enqueue(new Callback() {
-                        @Override
-                        public void onFailure(Call call, IOException e) {
-                            try {
-                                fd.close();
-                            } catch (IOException ex) {
-                                e.addSuppressed(ex);
-                            }
-                            System.out.println("실패" + e);
-                            //Log.d("실패", "failed", e);
-                        }
+    public int uploadFile(String sourceFileUri) {
 
-                        @Override
-                        public void onResponse(Call call, Response response) throws IOException {
-                            String result = response.body().string();
-                            System.out.println("결과" + result);
-                            //Log.d("결과",""+result);
-                            fd.close();
-                        }
-                    });
 
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
+
+        String fileName = sourceFileUri;
+
+
+
+        HttpURLConnection conn = null;
+
+        DataOutputStream dos = null;
+
+        String lineEnd = "\r\n";
+
+        String twoHyphens = "--";
+
+        String boundary = "*****";
+
+        int bytesRead, bytesAvailable, bufferSize;
+
+        byte[] buffer;
+
+        int maxBufferSize = 1 * 1024 * 1024;
+
+        File sourceFile = new File(sourceFileUri);
+
+
+
+        if (!sourceFile.isFile()) {
+
+
+
+            dialog.dismiss();
+
+
+
+            Log.e("uploadFile", "Source File not exist :"
+
+                    +uploadFilePath + "" + uploadFileName);
+
+
+
+            runOnUiThread(new Runnable() {
+
+                public void run() {
+
+                    messageText.setText("Source File not exist :"
+
+                            +uploadFilePath + "" + uploadFileName);
+
                 }
 
+            });
 
-                return null;
-            }
 
-            @Override
-            protected void onPostExecute(String s) {
-                super.onPostExecute(s);
-                System.out.println("끝");
-            }
+
+            return 0;
+
+
 
         }
 
-        sendDataToHttp sendData = new sendDataToHttp(this);
-        sendData.execute();
+        else
+
+        {
+
+            try {
+
+
+
+                // open a URL connection to the Servlet
+
+                FileInputStream fileInputStream = new FileInputStream(sourceFile);
+
+                URL url = new URL(upLoadServerUri);
+
+
+
+                // Open a HTTP  connection to  the URL
+
+                conn = (HttpURLConnection) url.openConnection();
+
+                conn.setDoInput(true); // Allow Inputs
+
+                conn.setDoOutput(true); // Allow Outputs
+
+                conn.setUseCaches(false); // Don't use a Cached Copy
+
+                conn.setRequestMethod("POST");
+
+                conn.setRequestProperty("Connection", "Keep-Alive");
+
+                conn.setRequestProperty("ENCTYPE", "multipart/form-data");
+
+                conn.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
+
+                conn.setRequestProperty("uploaded_file", fileName);
+
+
+
+                dos = new DataOutputStream(conn.getOutputStream());
+
+
+
+                dos.writeBytes(twoHyphens + boundary + lineEnd);
+
+                dos.writeBytes("Content-Disposition: form-data; name=\"uploaded_file\";filename=\""
+
+                        + fileName + "\"" + lineEnd);
+
+
+
+                dos.writeBytes(lineEnd);
+
+
+
+                // create a buffer of  maximum size
+
+                bytesAvailable = fileInputStream.available();
+
+
+
+                bufferSize = Math.min(bytesAvailable, maxBufferSize);
+
+                buffer = new byte[bufferSize];
+
+
+
+                // read file and write it into form...
+
+                bytesRead = fileInputStream.read(buffer, 0, bufferSize);
+
+
+
+                while (bytesRead > 0) {
+
+
+
+                    dos.write(buffer, 0, bufferSize);
+
+                    bytesAvailable = fileInputStream.available();
+
+                    bufferSize = Math.min(bytesAvailable, maxBufferSize);
+
+                    bytesRead = fileInputStream.read(buffer, 0, bufferSize);
+
+
+
+                }
+
+
+
+                // send multipart form data necesssary after file data...
+
+                dos.writeBytes(lineEnd);
+
+                dos.writeBytes(twoHyphens + boundary + twoHyphens + lineEnd);
+
+
+
+                // Responses from the server (code and message)
+
+                serverResponseCode = conn.getResponseCode();
+
+                String serverResponseMessage = conn.getResponseMessage();
+
+
+
+                Log.i("uploadFile", "HTTP Response is : "
+
+                        + serverResponseMessage + ": " + serverResponseCode);
+
+
+
+                if(serverResponseCode == 200){
+
+
+
+                    runOnUiThread(new Runnable() {
+
+                        public void run() {
+
+
+
+                            String msg = "File Upload Completed.\n\n See uploaded file here : \n\n"
+
+                                    +uploadFileName;
+
+
+
+                            messageText.setText(msg);
+
+                            Toast.makeText(uploadVideo.this, "File Upload Complete.",
+
+                                    Toast.LENGTH_SHORT).show();
+
+                        }
+
+                    });
+
+                }
+
+
+
+                //close the streams //
+
+                fileInputStream.close();
+
+                dos.flush();
+
+                dos.close();
+
+
+
+            } catch (MalformedURLException ex) {
+
+
+
+                dialog.dismiss();
+
+                ex.printStackTrace();
+
+
+
+                runOnUiThread(new Runnable() {
+
+                    public void run() {
+
+                        messageText.setText("MalformedURLException Exception : check script url.");
+
+                        Toast.makeText(uploadVideo.this, "MalformedURLException",
+
+                                Toast.LENGTH_SHORT).show();
+
+                    }
+
+                });
+
+
+
+                Log.e("Upload file to server", "error: " + ex.getMessage(), ex);
+
+            } catch (Exception e) {
+
+
+
+                dialog.dismiss();
+
+                e.printStackTrace();
+
+
+
+                runOnUiThread(new Runnable() {
+
+                    public void run() {
+
+                        messageText.setText("Got Exception : see logcat ");
+
+                        Toast.makeText(uploadVideo.this, "Got Exception : see logcat ",
+
+                                Toast.LENGTH_SHORT).show();
+
+                    }
+
+                });
+
+                Log.e("Upload server Exception", "Exception : "
+
+                        + e.getMessage(), e);
+
+            }
+
+            dialog.dismiss();
+
+            return serverResponseCode;
+
+
+
+        } // End else block
+
     }
-
-
 
 }
