@@ -48,33 +48,11 @@
             android:background="@android:drawable/ic_input_add" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/room_listview_description"
+    <Button
+        android:id="@+id/save"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginTop="8dp"
-        android:lines="1"
-        android:maxLines="1"
-        android:textAppearance="?android:attr/textAppearanceMedium"
-        android:text="@string/favorites"
-        android:gravity="center_vertical"/>
+        android:layout_height="wrap_content"
+        android:onClick="OpenSaveActivity"
+        android:text="동영상 저장 액티비티로 이동" />
 
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <ListView
-            android:id="@+id/room_listview"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:drawSelectorOnTop="false" />
-
-        <TextView
-            android:id="@android:id/empty"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:text="@string/no_favorites" />
-    </FrameLayout>
 </LinearLayout>
