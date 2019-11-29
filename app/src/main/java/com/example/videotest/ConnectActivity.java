@@ -645,8 +645,13 @@ public class ConnectActivity extends Activity {
     }
   };
 
-  public void OpenSaveActivity(View view){
+  public void OpenSaveActivity(View view){ //동영상 저장 액티비티
     Intent intent = new Intent(this, uploadVideo.class);
+    startActivity(intent);
+  }
+
+  public void OpenWatchActivity(View view){ //동영상 시청 액티비티
+    Intent intent = new Intent(this, watchVideo.class);
     startActivity(intent);
   }
 

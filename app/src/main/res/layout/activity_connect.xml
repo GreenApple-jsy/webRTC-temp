@@ -55,4 +55,11 @@
         android:onClick="OpenSaveActivity"
         android:text="동영상 저장 액티비티로 이동" />
 
+    <Button
+        android:id="@+id/watch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="OpenWatchActivity"
+        android:text="동영상 시청 액티비티로 이동" />
+
 </LinearLayout>
